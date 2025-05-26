@@ -1,0 +1,2732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Budget Wallet</title>
+  <meta name="description" content="Track your monthly budget, income and expenses smartly with this sleek budget wallet app.">
+  <meta name="theme-color" content="#121212">
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* Light Mode Variables (Default) */
+    :root {
+      --primary-color: #BDB96A; /* Muted Gold for primary actions and headings */
+      --secondary-color: #C1BFFF; /* Light Purple for secondary actions */
+      --accent-color: #FDFBD4; /* Light Yellow for background or subtle accents */
+      --danger-color: #CF6DFC; /* Vibrant Purple for danger actions */
+      --text-color: #333; /* Dark Grey */
+      --light-text-color: #fff; /* White */
+      --border-color: #ddd; /* Light Grey */
+      --card-bg: #fff; /* White */
+      --body-bg: #f5f5f5; /* Very Light Grey */
+      --button-hover-primary: #A09F5E;
+      --button-hover-secondary: #A0B2FF;
+      --button-hover-danger: #B550E0;
+      --warning-orange: #FFA500; /* Orange for 50% warning */
+      --warning-red: #FF0000; /* Red for 10% warning */
+
+      /* Gradient Colors */
+      --gradient-primary-start: #D4C97E;
+      --gradient-primary-end: #BDB96A;
+      --gradient-secondary-start: #D0CFFF;
+      --gradient-secondary-end: #C1BFFF;
+      --gradient-danger-start: #E08CFF;
+      --gradient-danger-end: #CF6DFC;
+    }
+
+    /* Dark Mode Variables */
+    body.dark-mode {
+      --primary-color: #3f51b5; /* Material-UI primary blue */
+      --secondary-color: #5c6bc0; /* Slightly lighter blue for secondary action */
+      --accent-color: #2e2e2e; /* Dark grey for accents */
+      --danger-color: #CF6DFC; /* Keeping vibrant purple for danger, ensure contrast */
+      --text-color: #ffffff; /* White */
+      --light-text-color: #ffffff; /* White */
+      --border-color: #333333; /* Darker grey for borders */
+      --card-bg: #1e1e1e; /* Material-UI background.paper */
+      --body-bg: #121212; /* Material-UI background.default */
+      --button-hover-primary: #303f9f; /* Darker primary for hover */
+      --button-hover-secondary: #424242; /* Darker secondary for hover */
+      --button-hover-danger: #9d3cdc; /* Slightly darker danger for hover */
+      --warning-orange: #FF8C00; /* Darker orange for dark mode */
+      --warning-red: #CC0000; /* Darker red for dark mode */
+
+      /* Gradient Colors for Dark Mode */
+      --gradient-primary-start: #4a60d0;
+      --gradient-primary-end: #3f51b5;
+      --gradient-secondary-start: #6a7ac9;
+      --gradient-secondary-end: #5c6bc0;
+      --gradient-danger-start: #E08CFF;
+      --gradient-danger-end: #CF6DFC;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      padding-bottom: 80px; /* Space for bottom navigation */
+      background-color: var(--body-bg);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+    }
+
+    h2 {
+      text-align: center;
+      color: var(--primary-color);
+      margin-bottom: 20px;
+      font-size: 24px; /* Adjusted font size */
+      transition: color 0.3s ease;
+    }
+    h4 {
+      text-align: center;
+      color: var(--primary-color);
+      margin-bottom: 20px;
+      font-size: 20px; /* Adjusted font size */
+      transition: color 0.3s ease;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease-in-out, background-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease, border 0.3s ease; /* Added border for transitions */
+      border: 1px solid transparent; /* Default transparent border */
+    }
+    /* Dark mode shadow adjustment */
+    body.dark-mode .card {
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    /* Warning Borders */
+    .card.warning-orange {
+        border: 2px solid var(--warning-orange);
+    }
+    .card.warning-red {
+        border: 2px solid var(--warning-red);
+    }
+
+    /* Animation for new fund cards */
+    .card.fade-in {
+        opacity: 0;
+        transform: translateY(10px);
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    /* Animation for deleting fund cards */
+    .card.fade-out {
+        opacity: 1;
+        transform: translateY(0);
+        animation: fadeOut 0.3s ease-out forwards;
+    }
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-10px);
+            height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            overflow: hidden;
+        }
+    }
+
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: calc(100% - 20px);
+      padding: 12px;
+      margin-bottom: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 16px;
+      background-color: var(--card-bg); /* Use card background for inputs */
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
+    input[type="number"] {
+        -moz-appearance: textfield; /* Firefox */
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    /* Placeholder color for dark mode */
+    body.dark-mode input::placeholder {
+      color: #777;
+    }
+
+    /* Radio button / Checkbox styling */
+    .radio-group, .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 15px;
+        align-items: center;
+    }
+
+    .radio-group label, .checkbox-group label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        font-size: 15px;
+        color: var(--text-color);
+    }
+
+    .radio-group input[type="radio"],
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin-right: 8px;
+        appearance: none; /* Hide default radio/checkbox */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--primary-color);
+        border-radius: 50%; /* For radio */
+        outline: none;
+        transition: background-color 0.2s, border-color 0.2s;
+        flex-shrink: 0; /* Prevent shrinking */
+    }
+    .checkbox-group input[type="checkbox"] {
+        border-radius: 4px; /* For checkbox */
+    }
+
+    .radio-group input[type="radio"]:checked,
+    .checkbox-group input[type="checkbox"]:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .radio-group input[type="radio"]:checked::before {
+        content: '';
+        display: block;
+        width: 10px;
+        height: 10px;
+        background-color: var(--light-text-color);
+        border-radius: 50%;
+        margin: 2px;
+    }
+    .checkbox-group input[type="checkbox"]:checked::before {
+        content: '✔'; /* Checkmark for checkbox */
+        display: block;
+        color: var(--light-text-color);
+        font-size: 12px;
+        line-height: 14px;
+        text-align: center;
+    }
+
+    .emi-amount-input {
+        display: none; /* Hidden by default */
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+    .emi-amount-input.show {
+        display: block;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 25px; /* Rounded corners for all buttons */
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, color 0.3s ease;
+      color: var(--light-text-color); /* Assuming light text for buttons */
+      background-size: 200% auto; /* For gradient animation */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* Subtle shadow */
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.primary {
+      background-image: linear-gradient(to right, var(--gradient-primary-start) 0%, var(--gradient-primary-end) 51%, var(--gradient-primary-start) 100%);
+    }
+
+    button.primary:hover {
+      background-position: right center; /* Change the gradient position on hover */
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    button.danger {
+      background-image: linear-gradient(to right, var(--gradient-danger-start) 0%, var(--gradient-danger-end) 51%, var(--gradient-danger-start) 100%);
+    }
+
+    button.danger:hover {
+      background-position: right center;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    button.secondary {
+      background-image: linear-gradient(to right, var(--gradient-secondary-start) 0%, var(--gradient-secondary-end) 51%, var(--gradient-secondary-start) 100%);
+    }
+
+    button.secondary:hover {
+      background-position: right center;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    .fund-item-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    /* Removed specific input width for funds as edit is gone */
+
+    .history-item {
+      font-size: 14px;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border-color); /* Use variable for history divider */
+      color: var(--text-color);
+      transition: color 0.3s ease, border-color 0.3s ease;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .total-balance {
+        font-size: 18px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        padding: 10px;
+        border-radius: 8px;
+        background-color: var(--accent-color);
+        color: var(--text-color);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .month-navigation {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .month-navigation #currentMonthYear {
+        font-weight: bold;
+        font-size: 1.4em;
+        color: var(--primary-color);
+        display: block; /* Ensures it takes its own line */
+        margin-bottom: 15px; /* Space below the month title */
+        transition: color 0.3s ease;
+    }
+    .month-nav-buttons {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .month-nav-buttons button {
+        width: 48%; /* Adjust width to fit two buttons in a row */
+        margin: 0;
+        padding: 10px;
+    }
+    .month-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .month-actions button {
+        flex: 1;
+        margin-top: 0;
+    }
+
+    .income-expense-summary {
+        display: flex;
+        justify-content: space-around;
+        gap: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .income-expense-summary div {
+        flex: 1;
+        padding: 10px;
+        border-radius: 8px;
+        background-color: var(--accent-color);
+        font-weight: bold;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .income-expense-summary span.amount {
+        display: block;
+        font-size: 1.1em;
+        margin-top: 5px;
+    }
+
+    /* Dark Mode Toggle Switch */
+    .dark-mode-toggle {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+        align-items: center;
+        gap: 10px;
+    }
+    .dark-mode-toggle label {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+    .dark-mode-toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .dark-mode-toggle .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--secondary-color);
+        transition: .4s;
+        border-radius: 34px;
+    }
+    .dark-mode-toggle .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: var(--light-text-color);
+        transition: .4s;
+        border-radius: 50%;
+    }
+    .dark-mode-toggle input:checked + .slider {
+        background-color: var(--primary-color);
+    }
+    .dark-mode-toggle input:focus + .slider {
+        box-shadow: 0 0 1px var(--primary-color);
+    }
+    .dark-mode-toggle input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+    .dark-mode-toggle span {
+        font-size: 14px;
+        color: var(--text-color);
+    }
+
+
+    /* Responsive adjustments for smaller screens (Android 6:19 aspect ratio considerations) */
+    @media (max-width: 400px) {
+      body {
+        padding: 10px;
+        padding-bottom: 80px; /* Space for bottom navigation */
+      }
+
+      .card {
+        padding: 15px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      select,
+      button {
+        font-size: 14px;
+        padding: 10px;
+      }
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-content {
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        transform: translateY(-20px);
+        transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.active .modal-content {
+        transform: translateY(0);
+    }
+
+    .modal-content h3 {
+        margin-top: 0;
+        color: var(--primary-color);
+        font-size: 1.5em;
+    }
+
+    .modal-content p {
+        margin-bottom: 20px;
+        font-size: 1.1em;
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .modal-buttons button {
+        width: 120px;
+        padding: 10px 15px;
+        font-size: 16px;
+        border-radius: 25px; /* Rounded corners for modal buttons */
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        margin-top: 0; /* Override general button margin-top */
+    }
+
+    .modal-buttons button.primary {
+        background-image: linear-gradient(to right, var(--gradient-primary-start) 0%, var(--gradient-primary-end) 51%, var(--gradient-primary-start) 100%);
+    }
+
+    .modal-buttons button.primary:hover {
+        background-position: right center;
+    }
+
+    .modal-buttons button.secondary {
+        background-image: linear-gradient(to right, var(--gradient-secondary-start) 0%, var(--gradient-secondary-end) 51%, var(--gradient-secondary-start) 100%);
+    }
+
+    .modal-buttons button.secondary:hover {
+        background-position: right center;
+    }
+
+    /* Floating Action Button (FAB) */
+    .fab {
+      position: fixed;
+      bottom: 90px; /* Adjust for bottom nav */
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      background-image: linear-gradient(to right, var(--gradient-primary-start) 0%, var(--gradient-primary-end) 51%, var(--gradient-primary-start) 100%);
+      color: white;
+      border-radius: 50%;
+      font-size: 28px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s, transform 0.2s ease-in-out;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: none; /* Ensure no default button border */
+      z-index: 900; /* Above other content, below modal */
+    }
+    .fab:hover {
+      background-position: right center;
+      transform: translateY(-3px);
+    }
+    .fab:active {
+      transform: scale(0.95);
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      max-width: 600px; /* Match body max-width */
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: space-around;
+      background-color: var(--card-bg);
+      border-top: 1px solid var(--border-color);
+      padding: 8px 0;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 950; /* Above FAB, below modal */
+      border-radius: 12px 12px 0 0; /* Rounded top corners */
+    }
+    .bottom-nav button {
+      background: none;
+      border: none;
+      font-size: 14px;
+      color: var(--text-color);
+      flex: 1; /* Distribute space evenly */
+      padding: 10px 0;
+      margin: 0; /* Override general button margin */
+      transition: background-color 0.2s ease, color 0.2s ease;
+      border-radius: 0; /* Override global button border-radius for nav buttons */
+    }
+    .bottom-nav button:hover {
+      background-color: rgba(0,0,0,0.05); /* Subtle hover effect */
+    }
+    body.dark-mode .bottom-nav button:hover {
+        background-color: rgba(255,255,255,0.05);
+    }
+    .bottom-nav button.active {
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    /* Progress Bar */
+    .progress-bar-container {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        background-color: var(--accent-color);
+        border-radius: 8px;
+        overflow: hidden;
+        height: 15px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        transition: background-color 0.3s ease;
+    }
+    .progress-bar {
+        height: 100%;
+        background: var(--primary-color);
+        width: 0%; /* Initial width */
+        border-radius: 8px;
+        transition: width 0.5s ease-out;
+    }
+    body.dark-mode .progress-bar-container {
+        box-shadow: inset 0 1px 3px rgba(255,255,255,0.1);
+    }
+
+    /* Toast Notification */
+    .toast-notification {
+        position: fixed;
+        bottom: 160px; /* Above FAB and nav */
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        z-index: 1100;
+        white-space: nowrap;
+    }
+    .toast-notification.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* New style for small round delete buttons */
+    .delete-fund-btn {
+        width: 30px; /* Small fixed width */
+        height: 30px; /* Small fixed height */
+        border-radius: 50%; /* Make it round */
+        background-image: linear-gradient(to right, var(--gradient-danger-start) 0%, var(--gradient-danger-end) 51%, var(--gradient-danger-start) 100%);
+        color: white;
+        font-size: 18px; /* Size of the 'X' */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0; /* Remove default padding */
+        margin: 0; /* Remove default margin */
+        flex-shrink: 0; /* Prevent shrinking in flex container */
+    }
+    .delete-fund-btn:hover {
+        background-position: right center;
+    }
+
+    /* Chatbot Styles */
+    .chatbot-fab {
+        position: fixed;
+        bottom: 90px; /* Same level as existing FAB */
+        left: 20px; /* Opposite side of existing FAB */
+        width: 56px;
+        height: 56px;
+        background-image: linear-gradient(to right, var(--gradient-secondary-start) 0%, var(--gradient-secondary-end) 51%, var(--gradient-secondary-start) 100%);
+        color: white;
+        border-radius: 50%;
+        font-size: 28px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.3s, transform 0.2s ease-in-out;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: none;
+        z-index: 900;
+        cursor: pointer;
+    }
+    .chatbot-fab:hover {
+        background-position: right center;
+        transform: translateY(-3px);
+    }
+    .chatbot-fab:active {
+        transform: scale(0.95);
+    }
+
+    .chat-container {
+        position: fixed;
+        bottom: 160px; /* Above bottom nav and FABs */
+        right: 20px;
+        width: 300px;
+        height: 400px;
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 999; /* Above FABs, below modals */
+        transform: scale(0.8) translateY(20px);
+        opacity: 0;
+        visibility: hidden;
+        transition: transform 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s ease-out;
+    }
+    .chat-container.open {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+    body.dark-mode .chat-container {
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .chat-header {
+        background-color: var(--primary-color);
+        color: var(--light-text-color);
+        padding: 10px 15px;
+        font-weight: bold;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .chat-header .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0 5px;
+        line-height: 1; /* Adjust to better center 'X' */
+        margin-top: -2px; /* Slight adjustment */
+    }
+    .chat-header .close-btn:hover {
+        opacity: 0.8;
+    }
+
+
+    .chat-messages {
+        flex-grow: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: var(--body-bg); /* Lighter background for messages */
+        color: var(--text-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.3s ease;
+    }
+
+    .chat-message {
+        margin-bottom: 10px;
+        line-height: 1.4;
+    }
+    .chat-message.user {
+        text-align: right;
+    }
+    .chat-message.bot {
+        text-align: left;
+    }
+    .chat-message span {
+        display: inline-block;
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 15px;
+        word-wrap: break-word;
+    }
+    .chat-message.user span {
+        background-color: var(--primary-color);
+        color: white;
+        border-bottom-right-radius: 2px;
+    }
+    .chat-message.bot span {
+        background-color: var(--accent-color);
+        color: var(--text-color);
+        border-bottom-left-radius: 2px;
+    }
+    body.dark-mode .chat-message.bot span {
+        background-color: var(--accent-color); /* Darker accent for dark mode */
+        color: var(--text-color);
+    }
+
+
+    .chat-input-area {
+        display: flex;
+        padding: 10px;
+        border-top: 1px solid var(--border-color);
+        gap: 8px;
+        align-items: center; /* Align items vertically */
+    }
+    .chat-input-area input {
+        flex-grow: 1;
+        padding: 8px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        font-size: 14px;
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        margin-bottom: 0; /* Override general input margin */
+    }
+    .chat-input-area button {
+        width: auto; /* Allow buttons to size based on content */
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 14px;
+        background-image: linear-gradient(to right, var(--gradient-primary-start) 0%, var(--gradient-primary-end) 51%, var(--gradient-primary-start) 100%);
+        color: white;
+        margin-top: 0; /* Override general button margin */
+        flex-shrink: 0; /* Prevent button from shrinking */
+    }
+    .chat-input-area button:hover {
+        background-position: right center;
+    }
+
+    .chat-icon-btn {
+        width: 40px; /* Fixed width for icon buttons */
+        height: 40px; /* Fixed height for icon buttons */
+        border-radius: 50%; /* Make it round */
+        background-image: linear-gradient(to right, var(--gradient-secondary-start) 0%, var(--gradient-secondary-end) 51%, var(--gradient-secondary-start) 100%);
+        color: white;
+        font-size: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    .chat-icon-btn:hover {
+        background-position: right center;
+    }
+    .chat-icon-btn.listening {
+        background-color: var(--danger-color); /* Highlight when listening */
+        animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+        from { box-shadow: 0 0 0 0 rgba(200, 0, 0, 0.7); }
+        to { box-shadow: 0 0 0 10px rgba(200, 0, 0, 0); }
+    }
+
+    .chat-options {
+        display: flex;
+        flex-wrap: wrap; /* Allow wrapping for small screens */
+        align-items: center;
+        justify-content: flex-end; /* Align to the right */
+        padding: 5px 10px;
+        background-color: var(--body-bg);
+        border-top: 1px solid var(--border-color);
+        font-size: 13px;
+        color: var(--text-color);
+        gap: 10px;
+    }
+    .chat-options .switch { /* Reusing existing switch styles */
+        width: 40px;
+        height: 22px;
+    }
+    .chat-options .slider {
+        border-radius: 22px;
+    }
+    .chat-options .slider:before {
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        border-radius: 50%;
+    }
+    .chat-options input:checked + .slider:before {
+        transform: translateX(18px);
+    }
+    .chat-options label, .chat-options input[type="text"] {
+        margin-bottom: 0; /* Override default input margin */
+    }
+    .chat-options input[type="text"] {
+        width: 120px; /* Smaller width for model name input */
+        padding: 6px 10px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+
+    /* Small screen adjustments for chat window */
+    @media (max-width: 400px) {
+        .chat-container {
+            width: calc(100% - 40px); /* Fill most of the screen width */
+            right: 20px;
+            left: 20px;
+            margin: auto; /* Center horizontally */
+        }
+        .chat-options {
+            justify-content: center; /* Center options on small screens */
+        }
+    }
+
+    /* FAQ Specific Styles */
+    .faq-item {
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+    }
+    .faq-item:last-child {
+        border-bottom: none;
+    }
+    .faq-question {
+        font-weight: bold;
+        cursor: pointer;
+        padding: 8px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--primary-color);
+    }
+    .faq-answer {
+        display: none;
+        padding: 5px 0 0 15px;
+        font-size: 0.95em;
+        color: var(--text-color);
+    }
+    .faq-answer.active {
+        display: block;
+    }
+    .faq-toggle-icon {
+        font-size: 1.2em;
+        transition: transform 0.2s ease;
+    }
+    .faq-question.active .faq-toggle-icon {
+        transform: rotate(180deg);
+    }
+    .expense-summary-text {
+        font-size: 0.95em;
+        margin-bottom: 15px;
+        line-height: 1.4;
+        color: var(--text-color);
+    }
+    .expense-summary-text strong {
+        color: var(--primary-color);
+    }
+
+    /* Settings Page Specific Styles */
+    .settings-group {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px dashed var(--border-color);
+    }
+    .settings-group:last-child {
+        border-bottom: none;
+    }
+    .settings-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    .settings-group select, .settings-group input[type="text"], .settings-group input[type="email"] {
+        width: calc(100% - 20px);
+        margin-bottom: 15px;
+    }
+    .avatar-options {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+    .avatar-option {
+        font-size: 30px;
+        cursor: pointer;
+        padding: 5px;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        transition: border-color 0.2s ease;
+    }
+    .avatar-option.selected {
+        border-color: var(--primary-color);
+    }
+    .profile-display {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .profile-avatar {
+        font-size: 60px;
+        margin-bottom: 10px;
+    }
+    .profile-name {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    .profile-email {
+        font-size: 0.9em;
+        color: var(--text-color);
+    }
+    .about-app-content p {
+        font-size: 0.9em;
+        margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h3 id="dashboard-section" style="text-align: center; color: var(--primary-color); margin-top: 10px; margin-bottom: 20px;"><span id="welcomeAvatar" class="profile-avatar" style="font-size: 1em; margin-right: 5px;"></span><span id="welcomeMessage"></span></h3>
+  <div class="total-balance">
+    Total Remaining Balance: <span id="currencySymbolTotalBalance">₹</span><span id="totalBalance">0.00</span>
+  </div>
+
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="budgetProgressBar"></div>
+  </div>
+
+  <div class="card">
+    <h4>Log Transaction</h4>
+    <select id="payCategory" aria-label="Select Category for Payment"></select>
+    <input type="number" id="payAmount" placeholder="Enter amount" aria-label="Payment Amount" />
+    <button onclick="handlePay()" class="secondary" aria-label="Log Expense and Open Default Payment App">Log Expense & Open <span id="defaultPaymentAppName">GPay</span></button>
+    <button onclick="revertLastTransaction()" class="danger" aria-label="Revert Last Transaction">Revert Last Transaction</button>
+  </div>
+
+  <div class="card month-navigation">
+    <span id="currentMonthYear"></span>
+    <div class="month-nav-buttons">
+        <button onclick="changeMonth(-1)" class="secondary" aria-label="Previous Month">Previous Month</button>
+        <button onclick="changeMonth(1)" class="secondary" aria-label="Next Month">Next Month</button>
+    </div>
+    <div class="month-actions">
+        <button onclick="copyFundsFromPreviousMonth()" class="secondary" id="copyFundsBtn" style="display:none;" aria-label="Copy Funds from Previous Month">Copy Last Month's Funds</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>Monthly Income & Expenses</h4>
+    <div class="income-expense-summary">
+        <div>
+            <span>Income</span>
+            <span class="amount"><span id="currencySymbolMonthlyIncome">₹</span><span id="displayMonthlyIncome">0.00</span></span>
+        </div>
+        <div>
+            <span>Total Expenses</span>
+            <span class="amount"><span id="currencySymbolTotalExpenses">₹</span><span id="displayTotalExpenses">0.00</span></span>
+        </div>
+    </div>
+    <input type="number" id="monthlyIncomeInput" placeholder="Enter/Update monthly income" aria-label="Monthly Income Input" />
+    <button onclick="setMonthlyIncome()" class="primary" aria-label="Set Monthly Income">Set Income</button>
+  </div>
+
+  <div class="card" id="create-fund-section">
+    <h4>Create New Fund</h4>
+    <input type="text" id="newFundName" placeholder="Fund name" aria-label="New Fund Name" />
+    <input type="number" id="newFundAmount" placeholder="Initial amount" aria-label="New Fund Initial Amount" />
+
+    <div class="radio-group">
+      <span>Fund Type:</span>
+      <label>
+        <input type="radio" name="fundType" value="expense" checked onchange="toggleAutoDeduct()"> Expense
+      </label>
+      <label>
+        <input type="radio" name="fundType" value="investment" onchange="toggleAutoDeduct()"> Investment
+      </label>
+    </div>
+
+    <div class="checkbox-group">
+      <label>
+        <input type="checkbox" id="isAutoDeduct"> Auto-Deduct (e.g., EMI)
+      </label>
+    </div>
+    <button onclick="createFund()" class="primary" aria-label="Create New Fund">Create Fund</button>
+  </div>
+
+  <div class="card">
+    <h4>Expense Funds</h4>
+    <div id="expenseFunds"></div>
+    <h5 style="text-align: center; color: var(--primary-color); margin-top: 20px;">Loan & EMI Funds</h5>
+    <div id="loanEmiFunds"></div>
+    <h5 style="text-align: center; color: var(--primary-color); margin-top: 20px;">Daily Expense Funds</h5>
+    <div id="dailyExpenseFunds"></div>
+  </div>
+
+  <div class="card">
+    <h4>Investment Funds</h4>
+    <div id="investmentFunds"></div>
+  </div>
+
+  <div class="card">
+    <h4>Fund Transfer</h4>
+    <select id="transferFromCategory" aria-label="Transfer From Category"></select>
+    <select id="transferToCategory" aria-label="Transfer To Category"></select>
+    <input type="number" id="transferAmount" placeholder="Amount to transfer" aria-label="Transfer Amount" />
+    <button onclick="transferFunds()" class="primary" aria-label="Transfer Funds">Transfer Funds</button>
+  </div>
+
+  <div class="card" id="analytics-section" style="display:none;">
+    <h4>Expense Distribution</h4>
+    <div id="expenseSummaryText" class="expense-summary-text"></div>
+    <canvas id="expensePieChart"></canvas>
+    <button onclick="exportToPdf()" class="primary" style="margin-top: 20px;" aria-label="Export to PDF">Export to PDF</button>
+  </div>
+
+  <div class="card" id="history-section" style="display:none;">
+    <h4 style="cursor:pointer" onclick="toggleHistory()" aria-label="Toggle Transaction History">Transaction History <span id="historyToggleIcon">▼</span></h4>
+    <div id="history" style="display:none;"></div>
+  </div>
+
+  <div id="faqContent" style="display:none;">
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaqAnswer(this)">
+            What is an "Expense Fund"? <span class="faq-toggle-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+            Expense Funds are categories you create to track your spending on specific items like "Groceries", "Utilities", "Entertainment", etc.
+        </div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaqAnswer(this)">
+            What is an "Investment Fund"? <span class="faq-toggle-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+            Investment Funds are for tracking money allocated towards savings, stocks, mutual funds, or any other investment.
+        </div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaqAnswer(this)">
+            How does "Auto-Deduct" work? <span class="faq-toggle-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+            "Auto-Deduct" is for fixed recurring payments like EMIs or monthly investments. If checked, the specified amount is automatically deducted at the start of each new month.
+        </div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaqAnswer(this)">
+            How do I revert a transaction? <span class="faq-toggle-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+            You can use the "Revert Last Transaction" button in the "Log Transaction" section to undo your most recent expense or fund transfer.
+        </div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaqAnswer(this)">
+            Can I change my currency? <span class="faq-toggle-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+            Yes, you can change your preferred currency (USD, EUR, INR) in the "Settings" section.
+        </div>
+    </div>
+  </div>
+
+
+  <div class="card" id="settings-section" style="display:none;">
+    <h4>Settings</h4>
+
+    <div class="settings-group">
+        <label for="darkModeToggleSwitchSettings">Theme:</label>
+        <div class="dark-mode-toggle" style="justify-content: flex-start; margin-bottom: 0;">
+            <span>🌞 Light Mode</span>
+            <label class="switch">
+              <input type="checkbox" id="darkModeToggleSwitchSettings" aria-label="Toggle dark mode">
+              <span class="slider"></span>
+            </label>
+            <span>🌙 Dark Mode</span>
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <label for="currencySelect">Currency:</label>
+        <select id="currencySelect" onchange="updateCurrency()">
+            <option value="INR">₹ Indian Rupee (INR)</option>
+            <option value="USD">$ US Dollar (USD)</option>
+            <option value="EUR">€ Euro (EUR)</option>
+        </select>
+    </div>
+
+    <div class="settings-group">
+        <label for="defaultPaymentAppSelect">Default Payment App:</label>
+        <select id="defaultPaymentAppSelect" onchange="updateDefaultPaymentApp()">
+            <option value="GPay">GPay</option>
+            </select>
+    </div>
+
+    <div class="settings-group">
+        <h5>User Profile</h5>
+        <div class="profile-display">
+            <span id="profileAvatarDisplay" class="profile-avatar">👋</span>
+            <div id="profileNameDisplay" class="profile-name">Guest</div>
+            <div id="profileEmailDisplay" class="profile-email"></div>
+        </div>
+        <label for="userNameInput">User Name:</label>
+        <input type="text" id="userNameInput" placeholder="Enter your name" onkeyup="updateUserProfile()" aria-label="User Name" />
+
+        <label>Choose Avatar:</label>
+        <div class="avatar-options" id="avatarOptions">
+            <span class="avatar-option" data-emoji="&#x1F473;">&#x1F473;</span> <span class="avatar-option" data-emoji="&#x1F466;">&#x1F466;</span> <span class="avatar-option" data-emoji="&#x1F467;">&#x1F467;</span> <span class="avatar-option" data-emoji="&#x1F468;">&#x1F468;</span> <span class="avatar-option" data-emoji="&#x1F469;">&#x1F469;</span> <span class="avatar-option" data-emoji="&#x1F471;">&#x1F471;</span> <span class="avatar-option" data-emoji="&#x1F9D1;">&#x1F9D1;</span> <span class="avatar-option" data-emoji="&#x1F9D3;">&#x1F9D3;</span> <span class="avatar-option" data-emoji="&#x1F9D4;">&#x1F9D4;</span> <span class="avatar-option" data-emoji="&#x1F47D;">&#x1F47D;</span> <span class="avatar-option" data-emoji="&#x1F916;">&#x1F916;</span> </div>
+        <label for="userEmailInput">Email ID:</label>
+        <input type="email" id="userEmailInput" placeholder="Enter your email" onkeyup="updateUserProfile()" aria-label="User Email" />
+    </div>
+
+    <div class="settings-group">
+        <h5 style="cursor:pointer" onclick="toggleFaqSectionSettings()" aria-label="Toggle FAQ Section">Frequently Asked Questions <span id="faqToggleIconSettings">▼</span></h5>
+        <div id="faqContentSettings" style="display:none;">
+            </div>
+    </div>
+
+    <div class="settings-group">
+        <h5>About the App</h5>
+        <div class="about-app-content">
+            <p>Smart Budget Wallet helps you track your monthly income and expenses efficiently. Manage various funds, log transactions, and visualize your spending with ease.</p>
+            <p>Version: 1.0.0</p>
+            </div>
+    </div>
+  </div>
+  <div style="text-align:center; margin-top: 30px;">
+    <button onclick="resetData()" class="danger" aria-label="Reset All Data for Current Month">Reset All Data (Current Month)</button>
+  </div>
+
+  <button class="fab" onclick="scrollToSection('create-fund-section')" aria-label="Add New Fund">+</button>
+
+  <nav class="bottom-nav">
+    <button onclick="scrollToSection('dashboard-section')" class="active" id="navDashboardBtn" aria-label="Go to Dashboard">Dashboard</button>
+    <button onclick="scrollToSection('history-section')" id="navHistoryBtn" aria-label="Go to History">History</button>
+    <button onclick="scrollToSection('analytics-section')" id="navAnalyticsBtn" aria-label="Go to Analytics">Analytics</button>
+    <button onclick="scrollToSection('settings-section')" id="navSettingsBtn" aria-label="Go to Settings">Settings</button>
+  </nav>
+
+  <button class="chatbot-fab" id="chatbotFab" aria-label="Open Chatbot">🤖</button>
+
+  <div class="chat-container" id="chatContainer">
+    <div class="chat-header">
+      Budget Bot
+      <button class="close-btn" id="closeChatBtn" aria-label="Close Chatbot">X</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-message bot"><span>Hello! I'm your Smart Budget Wallet bot. How can I assist you today? Try asking about your 'balance' or how to 'add a fund'.</span></div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="chatInput" placeholder="Type a message..." aria-label="Chat input" />
+      <button id="micBtn" class="chat-icon-btn" aria-label="Start Speech Recognition">🎤</button> <button id="sendChatBtn" aria-label="Send message">Send</button>
+    </div>
+    <div class="chat-options">
+      <label class="switch">
+        <input type="checkbox" id="ttsToggle" checked>
+        <span class="slider round"></span>
+      </label>
+      <span>Enable Voice</span>
+    </div>
+  </div>
+
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 id="modalTitle"></h3>
+      <p id="modalMessage"></p>
+      <div class="modal-buttons">
+        <button id="modalConfirmBtn" class="primary" style="display:none;" aria-label="Confirm Action">OK</button>
+        <button id="modalAlertBtn" class="primary" style="display:none;" aria-label="Acknowledge">OK</button>
+        <button id="modalCancelBtn" class="secondary" style="display:none;" aria-label="Cancel Action">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastNotification" class="toast-notification"></div>
+
+  <script>
+    // service-worker.js registration (added here for completeness, usually in a separate file)
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+    }
+
+    // Data structure to hold monthly data
+    let monthlyData = JSON.parse(localStorage.getItem('monthlyData')) || {};
+    let currentMonth = new Date(); // Represents the month being viewed
+
+    // User Profile and App Settings
+    let userProfile = JSON.parse(localStorage.getItem('userProfile')) || { name: 'Guest', avatar: ' ', email: '' };
+    let appSettings = JSON.parse(localStorage.getItem('appSettings')) || { currency: 'INR', defaultPaymentApp: 'GPay' };
+
+    // Initialize Chart.js pie chart instance
+    let expensePieChart;
+
+    // Currency Symbols Map
+    const currencySymbols = {
+        'USD': '$',
+        'EUR': '€',
+        'INR': '₹'
+    };
+
+    // Payment App URLs (placeholders for deep linking)
+    const paymentAppUrls = {
+        'GPay': 'https://gpay.app.goo.gl/'
+        // Removed AmazonPay and PhonePe URLs
+    };
+
+    // --- Modal Functions ---
+    const customModal = document.getElementById('customModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalAlertBtn = document.getElementById('modalAlertBtn');
+    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+    function showModal(title, message, type) {
+        return new Promise((resolve) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalAlertBtn.style.display = 'none';
+            modalConfirmBtn.style.display = 'none';
+            modalCancelBtn.style.display = 'none';
+
+            const closeModal = () => {
+                customModal.classList.remove('active');
+                modalAlertBtn.onclick = null;
+                modalConfirmBtn.onclick = null;
+                modalCancelBtn.onclick = null;
+            };
+
+            if (type === 'alert') {
+                modalAlertBtn.style.display = 'block';
+                modalAlertBtn.onclick = () => {
+                    closeModal();
+                    resolve(true); // For alert, always resolve true on OK
+                };
+            } else if (type === 'confirm') {
+                modalConfirmBtn.style.display = 'block';
+                modalCancelBtn.style.display = 'block';
+                modalConfirmBtn.onclick = () => {
+                    closeModal();
+                    resolve(true);
+                };
+                modalCancelBtn.onclick = () => {
+                    closeModal();
+                    resolve(false);
+                };
+            }
+            customModal.classList.add('active');
+        });
+    }
+
+    async function showAlert(message, title = 'Notification') {
+        await showModal(title, message, 'alert');
+    }
+
+    async function showConfirm(message, title = 'Confirmation') {
+        return await showModal(title, message, 'confirm');
+    }
+    // --- End Modal Functions ---
+
+    // --- Toast Notification Function ---
+    function showToast(message) {
+        const toast = document.getElementById('toastNotification');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000); // Hide after 3 seconds
+    }
+    // --- End Toast Notification Function ---
+
+    function getMonthYearString(date) {
+        const options = { year: 'numeric', month: 'long' };
+        return date.toLocaleString('en-US', options);
+    }
+
+    function getPreviousMonthYearString(date) {
+        const prevMonth = new Date(date);
+        prevMonth.setMonth(date.getMonth() - 1);
+        const options = { year: 'numeric', month: 'long' };
+        return prevMonth.toLocaleString('en-US', options);
+    }
+
+    function getCurrentMonthData() {
+        const monthYear = getMonthYearString(currentMonth);
+        if (!monthlyData[monthYear]) {
+            // Initialize with default categories and zero balances/spent for new month
+            monthlyData[monthYear] = {
+                income: 0,
+                categories: [], // Funds will now be added by user
+                history: [], // History will now store objects
+                emiDeducted: false // New flag for EMI auto-deduction
+            };
+        }
+        return monthlyData[monthYear];
+    }
+
+    function saveData() {
+      localStorage.setItem('monthlyData', JSON.stringify(monthlyData));
+    }
+
+    function saveUserProfile() {
+        localStorage.setItem('userProfile', JSON.stringify(userProfile));
+        renderUserProfile();
+    }
+
+    function saveAppSettings() {
+        localStorage.setItem('appSettings', JSON.stringify(appSettings));
+    }
+
+    function render() {
+      saveData();
+      saveUserProfile(); // Save user profile on render
+      saveAppSettings(); // Save app settings on render
+
+      const currentMonthData = getCurrentMonthData();
+      const categories = currentMonthData.categories;
+      const history = currentMonthData.history;
+      const monthlyIncome = currentMonthData.income;
+
+      // Update currency symbols
+      const currentCurrencySymbol = currencySymbols[appSettings.currency];
+      document.getElementById('currencySymbolTotalBalance').textContent = currentCurrencySymbol;
+      document.getElementById('currencySymbolMonthlyIncome').textContent = currentCurrencySymbol;
+      document.getElementById('currencySymbolTotalExpenses').textContent = currentCurrencySymbol;
+
+
+      document.getElementById('currentMonthYear').textContent = getMonthYearString(currentMonth);
+      document.getElementById('monthlyIncomeInput').value = monthlyIncome > 0 ? monthlyIncome.toFixed(2) : '';
+      document.getElementById('displayMonthlyIncome').textContent = monthlyIncome.toFixed(2);
+
+      const expenseFundsDiv = document.getElementById('expenseFunds');
+      const loanEmiFundsDiv = document.getElementById('loanEmiFunds');
+      const dailyExpenseFundsDiv = document.getElementById('dailyExpenseFunds');
+      const investmentFundsDiv = document.getElementById('investmentFunds');
+
+      const paySelect = document.getElementById('payCategory');
+      const transferFromSelect = document.getElementById('transferFromCategory');
+      const transferToSelect = document.getElementById('transferToCategory');
+      const historyDiv = document.getElementById('history');
+      const totalBalanceSpan = document.getElementById('totalBalance');
+      const displayTotalExpensesSpan = document.getElementById('displayTotalExpenses');
+      const budgetProgressBar = document.getElementById('budgetProgressBar');
+      const copyFundsBtn = document.getElementById('copyFundsBtn');
+      const expenseSummaryTextDiv = document.getElementById('expenseSummaryText');
+      const defaultPaymentAppNameSpan = document.getElementById('defaultPaymentAppName');
+
+      // Update default payment app name in "Log Transaction" button
+      defaultPaymentAppNameSpan.textContent = appSettings.defaultPaymentApp;
+
+
+      // Clear previous content
+      expenseFundsDiv.innerHTML = '';
+      loanEmiFundsDiv.innerHTML = '';
+      dailyExpenseFundsDiv.innerHTML = '';
+      investmentFundsDiv.innerHTML = '';
+      paySelect.innerHTML = '';
+      transferFromSelect.innerHTML = '';
+      transferToSelect.innerHTML = '';
+      
+      // Render history items from objects
+      historyDiv.innerHTML = history.map(h => `<div class='history-item'>${h.timestamp}: ${h.description}</div>`).join('');
+
+
+      const expenseCategories = categories.filter(cat => cat.type === 'expense');
+      const investmentCategories = categories.filter(cat => cat.type === 'investment');
+      const loanEmiCategories = expenseCategories.filter(cat => cat.deductionType === 'auto');
+      const dailyExpenseCategories = expenseCategories.filter(cat => cat.deductionType === 'manual');
+
+
+      // Show "Copy Last Month's Funds" button only if current month is new and previous month has data
+      const prevMonthDataExists = monthlyData[getPreviousMonthYearString(currentMonth)] && monthlyData[getPreviousMonthYearString(currentMonth)].categories.length > 0;
+      if (categories.length === 0 && prevMonthDataExists) {
+        copyFundsBtn.style.display = 'block';
+      } else {
+        copyFundsBtn.style.display = 'none';
+      }
+
+      // Helper function to apply warning borders
+      function applyWarningBorder(fundCard, fund) {
+          // Only apply warning borders to manual funds (not auto-deduct)
+          if (fund.deductionType === 'manual' && fund.initialBalance > 0) {
+              const remainingPercentage = (fund.balance / fund.initialBalance) * 100;
+              fundCard.classList.remove('warning-orange', 'warning-red'); // Clear previous
+              if (remainingPercentage <= 10) {
+                  fundCard.classList.add('warning-red');
+              } else if (remainingPercentage <= 50) {
+                  fundCard.classList.add('warning-orange');
+              }
+          } else {
+              // Ensure no warning classes are present for auto-deduct funds
+              fundCard.classList.remove('warning-orange', 'warning-red');
+          }
+      }
+
+      // Render Loan & EMI Funds
+      if (loanEmiCategories.length > 0) {
+        loanEmiCategories.forEach(cat => {
+          const fundCard = document.createElement('div');
+          fundCard.className = 'card fade-in';
+          // For auto-deduct funds, only show the auto-deduct amount, not remaining balance
+          fundCard.innerHTML = `
+              <div class='row'>
+                <strong>${cat.name}</strong>
+                <span>Auto-Deduct: ${currentCurrencySymbol}${cat.emiAmount.toFixed(2)}</span>
+                <button onclick='deleteFund("${cat.name}")' class='danger delete-fund-btn' aria-label="Delete ${cat.name} Fund">X</button>
+              </div>
+              `;
+          applyWarningBorder(fundCard, cat); // Apply warning border (will not highlight auto-deduct)
+          loanEmiFundsDiv.appendChild(fundCard);
+        });
+      } else {
+          loanEmiFundsDiv.innerHTML = '<p style="text-align: center; font-size: 0.9em; color: var(--text-color);">No Loan & EMI funds created.</p>';
+      }
+
+
+      // Render Daily Expense Funds
+      if (dailyExpenseCategories.length > 0) {
+        dailyExpenseCategories.forEach(cat => {
+          const fundCard = document.createElement('div');
+          fundCard.className = 'card fade-in';
+          fundCard.innerHTML = `
+              <div class='row'>
+                <strong>${cat.name}</strong>
+                <span>${currentCurrencySymbol}${cat.balance.toFixed(2)}</span>
+                <button onclick='deleteFund("${cat.name}")' class='danger delete-fund-btn' aria-label="Delete ${cat.name} Fund">X</button>
+              </div>`;
+          applyWarningBorder(fundCard, cat); // Apply warning border
+          dailyExpenseFundsDiv.appendChild(fundCard);
+        });
+      } else {
+          dailyExpenseFundsDiv.innerHTML = '<p style="text-align: center; font-size: 0.9em; color: var(--text-color);">No Daily Expense funds created.</p>';
+      }
+
+
+      // Render Investment Funds
+      if (investmentCategories.length > 0) {
+        investmentCategories.forEach(cat => {
+          const fundCard = document.createElement('div');
+          fundCard.className = 'card fade-in';
+          // For auto-deduct investment, show auto-invested amount, otherwise show spent
+          fundCard.innerHTML = `
+              <div class='row'>
+                <strong>${cat.name}</strong>
+                <span>${currentCurrencySymbol}${cat.balance.toFixed(2)}</span>
+                <button onclick='deleteFund("${cat.name}")' class='danger delete-fund-btn' aria-label="Delete ${cat.name} Fund">X</button>
+              </div>
+              <div>${cat.deductionType === 'auto' ? `Auto-Invested: ${currentCurrencySymbol}${cat.emiAmount.toFixed(2)}` : `Invested: ${currentCurrencySymbol}${cat.spent.toFixed(2)}`}</div>
+              `;
+          applyWarningBorder(fundCard, cat); // Apply warning border (will not highlight auto-deduct investment)
+          investmentFundsDiv.appendChild(fundCard);
+        });
+      } else {
+          investmentFundsDiv.innerHTML = '<p style="text-align: center; font-size: 0.9em; color: var(--text-color);">No Investment funds created.</p>';
+      }
+
+      // Populate Pay and Transfer dropdowns using original categories array
+      categories.forEach((cat, index) => {
+        // Only expense funds that are NOT auto-deductible for payment
+        if (cat.type === 'expense' && cat.deductionType !== 'auto') {
+            paySelect.innerHTML += `<option value='${index}'>${cat.name} (${currentCurrencySymbol}${cat.balance.toFixed(2)})</option>`;
+        }
+        // Only manual expense funds for transfer
+        if (cat.type === 'expense' && cat.deductionType === 'manual') {
+            transferFromSelect.innerHTML += `<option value='${index}'>${cat.name} (${currentCurrencySymbol}${cat.balance.toFixed(2)})</option>`;
+            transferToSelect.innerHTML += `<option value='${index}'>${cat.name} (${currentCurrencySymbol}${cat.balance.toFixed(2)})</option>`;
+        }
+      });
+
+
+      // Calculate and update total expenses for the month
+      const totalSpent = categories.reduce((sum, cat) => sum + cat.spent, 0);
+      displayTotalExpensesSpan.textContent = totalSpent.toFixed(2);
+
+      // Calculate and update total remaining balance (income - total expenses)
+      totalBalanceSpan.textContent = (monthlyIncome - totalSpent).toFixed(2);
+
+      // Update Budget ProgressBar
+      let spentPercentage = 0;
+      if (monthlyIncome > 0) {
+          spentPercentage = (totalSpent / monthlyIncome) * 100;
+          if (spentPercentage > 100) spentPercentage = 100; // Cap at 100%
+      }
+      budgetProgressBar.style.width = `${spentPercentage.toFixed(2)}%`;
+
+      // Update Expense Summary Text
+      let totalManualExpenses = 0;
+      let totalAutoDeductExpenses = 0;
+      let totalInvestments = 0;
+
+      categories.forEach(cat => {
+          if (cat.type === 'expense') {
+              if (cat.deductionType === 'auto') {
+                  totalAutoDeductExpenses += cat.spent;
+              } else {
+                  totalManualExpenses += cat.spent;
+              }
+          } else if (cat.type === 'investment') {
+              totalInvestments += cat.spent;
+          }
+      });
+
+      expenseSummaryTextDiv.innerHTML = `
+          <p>Total Manual Expenses: <strong>${currentCurrencySymbol}${totalManualExpenses.toFixed(2)}</strong></p>
+          <p>Total Auto-Deduct (EMI/Loan) Expenses: <strong>${currentCurrencySymbol}${totalAutoDeductExpenses.toFixed(2)}</strong></p>
+          <p>Total Investments: <strong>${currentCurrencySymbol}${totalInvestments.toFixed(2)}</strong></p>
+          <p>Overall Total Expenses: <strong>${currentCurrencySymbol}${totalSpent.toFixed(2)}</strong></p>
+      `;
+
+
+      // Render Pie Chart
+      renderPieChart(categories);
+    }
+
+    function renderPieChart(categories) {
+        const ctx = document.getElementById('expensePieChart').getContext('2d');
+        // Filter to include both expense and investment categories with spent > 0
+        const expensesData = categories.filter(cat => cat.spent > 0 && (cat.type === 'expense' || cat.type === 'investment'));
+
+        const labels = expensesData.map(cat => cat.name);
+        const data = expensesData.map(cat => cat.spent);
+
+        // Generate dynamic colors for the pie chart slices, ensuring contrast in both modes
+        const backgroundColors = expensesData.map((_, i) => `hsl(${(i * 70 + 30) % 360}, 70%, 70%)`);
+        const borderColors = expensesData.map((_, i) => `hsl(${(i * 70 + 30) % 360}, 70%, 50%)`);
+
+
+        if (expensePieChart) {
+            expensePieChart.destroy(); // Destroy previous chart instance before creating a new one
+        }
+
+        expensePieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-color'), // Make legend text readable
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += currencySymbols[appSettings.currency] + context.parsed.toFixed(2);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    async function setMonthlyIncome() {
+        const incomeInput = document.getElementById('monthlyIncomeInput');
+        const income = parseFloat(incomeInput.value);
+        const currentMonthData = getCurrentMonthData();
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+        if (isNaN(income) || income < 0) {
+            await showAlert('Please enter a valid non-negative income amount.');
+            return;
+        }
+
+        if (currentMonthData.income > 0 && income !== currentMonthData.income) {
+            const confirmed = await showConfirm('You have already set an income for this month. Do you want to update it?');
+            if (!confirmed) {
+                incomeInput.value = currentMonthData.income.toFixed(2); // Revert input if cancelled
+                return;
+            }
+        }
+
+        currentMonthData.income = income;
+        addToHistory({
+            type: 'income_set',
+            amount: income,
+            description: `Monthly income set/updated to ${currentCurrencySymbol}${income.toFixed(2)}`
+        });
+        showToast(`Monthly income updated to ${currentCurrencySymbol}${income.toFixed(2)}`);
+        render();
+    }
+
+    // Function to handle enabling/disabling auto-deduct based on fund type
+    function toggleAutoDeduct() {
+        // The auto-deduct checkbox is now always enabled, as both expense and investment can be auto-deducted.
+        // No specific disabling logic needed here based on fund type.
+    }
+
+    async function createFund() {
+        const nameInput = document.getElementById('newFundName');
+        const amountInput = document.getElementById('newFundAmount');
+        const isAutoDeductCheckbox = document.getElementById('isAutoDeduct');
+
+        const name = nameInput.value.trim();
+        const amount = parseFloat(amountInput.value);
+        const fundType = document.querySelector('input[name="fundType"]:checked').value;
+        // The deductionType is now relevant for both 'expense' and 'investment' funds
+        const deductionType = isAutoDeductCheckbox.checked ? 'auto' : 'manual';
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+        // Initial validation
+        if (!name || isNaN(amount) || amount < 0) {
+            await showAlert('Please enter a valid fund name and a non-negative initial amount.');
+            return;
+        }
+
+        // Specific validation for auto-deduct funds
+        if (deductionType === 'auto' && amount <= 0) { // Applies to both expense and investment if auto-deduct
+            await showAlert('For auto-deductible funds, the initial amount must be a positive value.');
+            return;
+        }
+
+        const currentMonthData = getCurrentMonthData();
+        const existingFund = currentMonthData.categories.find(cat => cat.name.toLowerCase() === name.toLowerCase());
+        if (existingFund) {
+            await showAlert(`A fund with the name '${name}' already exists. Please choose a different name.`);
+            return;
+        }
+
+        let newFund = {
+            name,
+            initialBalance: amount, // Store original initial amount for copying next month
+            type: fundType,
+            deductionType: deductionType,
+            emiAmount: 0, // Default, only applies to auto-deduct
+            balance: amount, // Default balance is initial amount
+            spent: 0 // Default spent is 0
+        };
+
+        if (deductionType === 'auto') {
+            newFund.emiAmount = amount; // EMI amount is the initial amount
+            newFund.balance = amount - newFund.emiAmount; // Immediately deduct EMI from balance
+            newFund.spent = newFund.emiAmount; // Mark EMI as spent
+        } else { // Manual deduction for both expense and investment
+            if (fundType === 'investment') {
+                newFund.spent = amount; // For manual investment, the full amount is "spent" on investment
+            } else { // Manual expense
+                newFund.spent = 0; // Manual expenses start with 0 spent
+            }
+        }
+
+        currentMonthData.categories.push(newFund);
+        addToHistory({
+            type: 'fund_creation',
+            fundName: name,
+            amount: amount,
+            fundType: fundType,
+            deductionType: deductionType,
+            description: `Created new ${fundType} fund '${name}' with ${currentCurrencySymbol}${amount.toFixed(2)} (Deduction: ${deductionType === 'auto' ? `Auto, EMI: ${currentCurrencySymbol}${newFund.emiAmount.toFixed(2)}` : 'Manual'})`
+        });
+        showToast(`Fund '${name}' created!`);
+
+        nameInput.value = '';
+        amountInput.value = '';
+        document.querySelector('input[name="fundType"][value="expense"]').checked = true; // Reset to Expense
+        isAutoDeductCheckbox.checked = false;
+        toggleAutoDeduct(); // Reset auto-deduct checkbox state
+        render();
+    }
+
+    async function deleteFund(fundName) {
+      const currentMonthData = getCurrentMonthData();
+      const confirmed = await showConfirm(`Are you sure you want to delete the fund '${fundName}'? This action cannot be undone.`, 'Delete Fund');
+      if (confirmed) {
+        const fundCards = document.querySelectorAll('#loanEmiFunds .card, #dailyExpenseFunds .card, #investmentFunds .card');
+        const fundCardToDelete = Array.from(fundCards).find(card => card.querySelector('strong').textContent === fundName);
+
+        if (fundCardToDelete) {
+            fundCardToDelete.classList.add('fade-out');
+            fundCardToDelete.addEventListener('animationend', () => {
+                const actualIndex = currentMonthData.categories.findIndex(cat => cat.name === fundName);
+                if (actualIndex !== -1) {
+                    const deletedFund = currentMonthData.categories.splice(actualIndex, 1)[0];
+                    addToHistory({
+                        type: 'fund_deletion',
+                        fundName: deletedFund.name,
+                        initialBalance: deletedFund.initialBalance,
+                        type: deletedFund.type,
+                        deductionType: deletedFund.deductionType,
+                        emiAmount: deletedFund.emiAmount,
+                        balance: deletedFund.balance,
+                        spent: deletedFund.spent,
+                        description: `Deleted fund '${deletedFund.name}'`
+                    });
+                    showToast(`Fund '${fundName}' deleted.`);
+                    render();
+                }
+            }, { once: true });
+        } else {
+            const actualIndex = currentMonthData.categories.findIndex(cat => cat.name === fundName);
+            if (actualIndex !== -1) {
+                const deletedFund = currentMonthData.categories.splice(actualIndex, 1)[0];
+                addToHistory({
+                    type: 'fund_deletion',
+                    fundName: deletedFund.name,
+                    initialBalance: deletedFund.initialBalance,
+                    type: deletedFund.type,
+                    deductionType: deletedFund.deductionType,
+                    emiAmount: deletedFund.emiAmount,
+                    balance: deletedFund.balance,
+                    spent: deletedFund.spent,
+                    description: `Deleted fund '${deletedFund.name}'`
+                });
+                showToast(`Fund '${fundName}' deleted.`);
+                render();
+            }
+        }
+      }
+    }
+
+
+    async function handlePay() {
+      const payCategorySelect = document.getElementById('payCategory');
+      const index = parseInt(payCategorySelect.value);
+      const amountInput = document.getElementById('payAmount');
+      const amount = parseFloat(amountInput.value);
+      const currentMonthData = getCurrentMonthData();
+      // Define currentCurrencySymbol here for use in this function
+      const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+      if (isNaN(index) || index < 0 || index >= currentMonthData.categories.length) {
+          await showAlert('Please select a valid fund to pay from.');
+          return;
+      }
+
+      if (currentMonthData.categories[index].type !== 'expense') {
+          await showAlert('You can only log expenses from Expense funds.');
+          return;
+      }
+      if (currentMonthData.categories[index].deductionType === 'auto') {
+          await showAlert('Auto-deduct funds cannot be used for manual transactions.');
+          return;
+      }
+
+      if (isNaN(amount) || amount <= 0) {
+        await showAlert('Please enter a valid positive amount for the transaction.');
+        return;
+      }
+      if (currentMonthData.categories[index].balance < amount) {
+        await showAlert('Insufficient funds in ' + currentMonthData.categories[index].name + '. Current balance: ' + currentCurrencySymbol + currentMonthData.categories[index].balance.toFixed(2));
+        return;
+      }
+
+      currentMonthData.categories[index].balance -= amount;
+      currentMonthData.categories[index].spent += amount; // Track spent for pie chart
+      addToHistory({
+          type: 'expense',
+          fundName: currentMonthData.categories[index].name,
+          amount: amount,
+          description: `Paid ${currentCurrencySymbol}${amount.toFixed(2)} from ${currentMonthData.categories[index].name}`
+      });
+      showToast(`Paid ${currentCurrencySymbol}${amount.toFixed(2)} from '${currentMonthData.categories[index].name}'.`);
+      amountInput.value = '';
+      render();
+
+      // Redirect to selected payment app
+      const selectedPaymentAppUrl = paymentAppUrls[appSettings.defaultPaymentApp];
+      if (selectedPaymentAppUrl) {
+          window.open(selectedPaymentAppUrl, '_blank');
+      } else {
+          showAlert(`No URL configured for ${appSettings.defaultPaymentApp}.`);
+      }
+    }
+
+    async function transferFunds() {
+        const transferFromSelect = document.getElementById('transferFromCategory');
+        const transferToSelect = document.getElementById('transferToCategory');
+        const fromIndex = parseInt(transferFromSelect.value);
+        const toIndex = parseInt(transferToSelect.value);
+        const amountInput = document.getElementById('transferAmount');
+        const amount = parseFloat(amountInput.value);
+        const currentMonthData = getCurrentMonthData();
+        // Define currentCurrencySymbol here for use in this function
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+        if (isNaN(fromIndex) || fromIndex < 0 || fromIndex >= currentMonthData.categories.length ||
+            isNaN(toIndex) || toIndex < 0 || toIndex >= currentMonthData.categories.length) {
+            await showAlert('Please select valid "From" and "To" funds for the transfer.');
+            return;
+        }
+
+        if (isNaN(amount) || amount <= 0) {
+            await showAlert('Please enter a valid positive amount to transfer.');
+            return;
+        }
+        if (fromIndex === toIndex) {
+            await showAlert('Cannot transfer funds to the same fund.');
+            return;
+        }
+
+        const fromFund = currentMonthData.categories[fromIndex];
+        const toFund = currentMonthData.categories[toIndex];
+
+        // Prevent transfers from/to Investment funds
+        if (fromFund.type === 'investment' || toFund.type === 'investment') {
+            await showAlert('Transfers to or from Investment funds are not allowed.');
+            return;
+        }
+
+        // Prevent transfers from/to Auto-Deduct (EMI/Loan) funds
+        if (fromFund.type === 'expense' && fromFund.deductionType === 'auto') {
+            await showAlert('Transfers from Auto-Deduct (EMI/Loan) funds are not allowed.');
+            return;
+        }
+        if (toFund.type === 'expense' && toFund.deductionType === 'auto') {
+            await showAlert('Transfers to Auto-Deduct (EMI/Loan) funds are not allowed.');
+            return;
+        }
+
+        if (fromFund.balance < amount) {
+            await showAlert('Insufficient funds in ' + fromFund.name + '. Current balance: ' + currentCurrencySymbol + fromFund.balance.toFixed(2));
+            return;
+        }
+
+        fromFund.balance -= amount;
+        toFund.balance += amount;
+
+        addToHistory({
+            type: 'transfer',
+            fromFund: fromFund.name,
+            toFund: toFund.name,
+            amount: amount,
+            description: `Transferred ${currentCurrencySymbol}${amount.toFixed(2)} from ${fromFund.name} to ${toFund.name}`
+        });
+        showToast(`Transferred ${currentCurrencySymbol}${amount.toFixed(2)} from '${fromFund.name}' to '${toFund.name}'.`);
+        amountInput.value = '';
+        render();
+    }
+
+    function addToHistory(transaction) {
+      transaction.timestamp = new Date().toLocaleString();
+      const currentMonthData = getCurrentMonthData();
+      currentMonthData.history.unshift(transaction);
+      currentMonthData.history = currentMonthData.history.slice(0, 50); // Keep history to last 50 entries
+    }
+
+    async function revertLastTransaction() {
+        const currentMonthData = getCurrentMonthData();
+        if (currentMonthData.history.length === 0) {
+            await showAlert('No transactions to revert.');
+            return;
+        }
+
+        const lastTransaction = currentMonthData.history[0]; // Get the last transaction (most recent)
+        // Define currentCurrencySymbol here for use in this function
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+        // Confirm with the user
+        const confirmed = await showConfirm(`Are you sure you want to revert the last transaction: "${lastTransaction.description}"?`, 'Confirm Revert');
+        if (!confirmed) {
+            return;
+        }
+
+        let success = false;
+        let revertDescription = '';
+
+        try {
+            switch (lastTransaction.type) {
+                case 'expense':
+                    const expenseFund = currentMonthData.categories.find(cat => cat.name === lastTransaction.fundName);
+                    if (expenseFund) {
+                        expenseFund.balance += lastTransaction.amount;
+                        expenseFund.spent -= lastTransaction.amount;
+                        revertDescription = `Reverted expense of ${currentCurrencySymbol}${lastTransaction.amount.toFixed(2)} from ${lastTransaction.fundName}.`;
+                        success = true;
+                    } else {
+                        revertDescription = `Failed to revert: Fund '${lastTransaction.fundName}' not found.`;
+                    }
+                    break;
+                case 'transfer':
+                    const fromFund = currentMonthData.categories.find(cat => cat.name === lastTransaction.fromFund);
+                    const toFund = currentMonthData.categories.find(cat => cat.name === lastTransaction.toFund);
+                    if (fromFund && toFund) {
+                        fromFund.balance += lastTransaction.amount; // Add back to fromFund
+                        toFund.balance -= lastTransaction.amount; // Subtract from toFund
+                        revertDescription = `Reverted transfer of ${currentCurrencySymbol}${lastTransaction.amount.toFixed(2)} from ${lastTransaction.fromFund} to ${lastTransaction.toFund}.`;
+                        success = true;
+                    } else {
+                        revertDescription = `Failed to revert: One or both funds for transfer not found.`;
+                    }
+                    break;
+                case 'income_set':
+                    // Reverting income set is complex as it might affect other calculations.
+                    // For now, we'll just remove it from history and alert.
+                    revertDescription = `Reverting income set is not directly supported. Please manually adjust income if needed.`;
+                    break;
+                case 'fund_creation':
+                    // Reverting fund creation means deleting the fund.
+                    // This is handled by the deleteFund function, but direct revert here is complex.
+                    revertDescription = `Reverting fund creation is not directly supported. Please manually delete the fund if needed.`;
+                    break;
+                case 'fund_deletion':
+                    // Reverting fund deletion means recreating the fund.
+                    // This is also complex as it requires all original fund properties.
+                    revertDescription = `Reverting fund deletion is not directly supported. Please manually recreate the fund if needed.`;
+                    break;
+                case 'emi_deduction':
+                    // EMI deductions are part of monthly auto-deduction logic, not typically reverted manually.
+                    revertDescription = `Reverting auto-deducted EMI is not directly supported.`;
+                    break;
+                default:
+                    revertDescription = `Cannot revert this type of transaction: ${lastTransaction.type}.`;
+                    break;
+            }
+
+            if (success) {
+                currentMonthData.history.shift(); // Remove the reverted transaction from history
+                addToHistory({
+                    type: 'revert',
+                    originalTransaction: lastTransaction,
+                    description: revertDescription
+                });
+                showToast(revertDescription);
+                render();
+            } else {
+                await showAlert(revertDescription, 'Revert Failed');
+            }
+
+        } catch (error) {
+            console.error("Error during transaction revert:", error);
+            await showAlert(`An error occurred while trying to revert the transaction. ${error.message}`, 'Revert Error');
+        }
+    }
+
+
+    async function resetData() {
+      const confirmed = await showConfirm(`Are you sure you want to reset all funds, income, and history for ${getMonthYearString(currentMonth)}? This action is irreversible.`, 'Reset Data');
+      if (confirmed) {
+        const currentMonthData = getCurrentMonthData();
+        currentMonthData.income = 0;
+        currentMonthData.categories = []; // Start with no funds
+        currentMonthData.history = [];
+        currentMonthData.emiDeducted = false; // Reset EMI flag
+        saveData(); // Save changes to localStorage
+        render();
+        await showAlert(`All data for ${getMonthYearString(currentMonth)} has been reset.`, 'Data Reset');
+        showToast(`All data for ${getMonthYearString(currentMonth)} has been reset.`);
+      }
+    }
+
+    function toggleHistory() {
+      const historyDiv = document.getElementById('history');
+      const historyToggleIcon = document.getElementById('historyToggleIcon');
+      const isHidden = historyDiv.style.display === 'none';
+      historyDiv.style.display = isHidden ? 'block' : 'none';
+      historyToggleIcon.textContent = isHidden ? '▲' : '▼';
+    }
+
+    // This function is for the main (hidden) FAQ section.
+    function toggleFaqSection() {
+        const faqContentDiv = document.getElementById('faqContent');
+        // No toggle icon on the main hidden FAQ section, so this might not be used directly.
+        const isHidden = faqContentDiv.style.display === 'none';
+        faqContentDiv.style.display = isHidden ? 'block' : 'none';
+    }
+
+    // This function is for the FAQ section within Settings.
+    function toggleFaqSectionSettings() {
+        const faqContentDiv = document.getElementById('faqContentSettings');
+        const faqToggleIcon = document.getElementById('faqToggleIconSettings');
+        const isHidden = faqContentDiv.style.display === 'none';
+        faqContentDiv.style.display = isHidden ? 'block' : 'none';
+        faqToggleIcon.textContent = isHidden ? '▲' : '▼';
+    }
+
+
+    function toggleFaqAnswer(element) {
+        const answer = element.nextElementSibling;
+        const icon = element.querySelector('.faq-toggle-icon');
+        if (icon) {
+            if (answer.classList.contains('active')) {
+                answer.classList.remove('active');
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                answer.classList.add('active');
+                icon.style.transform = 'rotate(180deg)';
+            }
+        } else {
+            if (answer.classList.contains('active')) {
+                answer.classList.remove('active');
+            } else {
+                answer.classList.add('active');
+            }
+        }
+    }
+
+    async function changeMonth(delta) {
+        const oldMonth = new Date(currentMonth);
+        currentMonth.setMonth(currentMonth.getMonth() + delta);
+        const newMonthData = getCurrentMonthData();
+
+        if (delta === 1 && !newMonthData.emiDeducted) {
+            await autoDeductEmiForCurrentMonth();
+        }
+        render();
+    }
+
+    async function autoDeductEmiForCurrentMonth() {
+        const currentMonthData = getCurrentMonthData();
+        if (currentMonthData.emiDeducted) return;
+
+        let totalEmiDeducted = 0;
+        let emiDeductions = [];
+        const currentCurrencySymbol = currencySymbols[appSettings.currency]; // Define here
+
+        currentMonthData.categories.forEach(cat => {
+            if (cat.deductionType === 'auto' && cat.emiAmount > 0) { // Check for auto-deduct regardless of type
+                const deductionAmount = cat.emiAmount;
+                if (cat.balance >= deductionAmount) {
+                    cat.balance -= deductionAmount;
+                    cat.spent += deductionAmount;
+                    totalEmiDeducted += deductionAmount;
+                    emiDeductions.push(`${cat.name}: ${currentCurrencySymbol}${deductionAmount.toFixed(2)}`);
+                } else {
+                    emiDeductions.push(`${cat.name}: Failed deduction (Insufficient funds: ${currentCurrencySymbol}${cat.balance.toFixed(2)})`);
+                }
+            }
+        });
+
+        if (totalEmiDeducted > 0) {
+            currentMonthData.emiDeducted = true;
+            addToHistory({
+                type: 'emi_deduction',
+                amount: totalEmiDeducted,
+                details: emiDeductions,
+                description: `Auto-deducted funds for ${getMonthYearString(currentMonth)}: ${emiDeductions.join('; ')}`
+            });
+            showToast(`Auto-deducted funds for ${getMonthYearString(currentMonth)}.`);
+        } else {
+            addToHistory({
+                type: 'emi_deduction_skipped',
+                description: `No auto-deductible funds or no deductions for ${getMonthYearString(currentMonth)}.`
+            });
+        }
+    }
+
+
+    async function copyFundsFromPreviousMonth() {
+        const confirmed = await showConfirm(`Are you sure you want to copy all fund setups from the previous month to ${getMonthYearString(currentMonth)}? This will overwrite any existing funds in this month.`, 'Copy Funds');
+        if (!confirmed) return;
+
+        const prevMonthStr = getPreviousMonthYearString(currentMonth);
+        const prevMonthData = monthlyData[prevMonthStr];
+        const currentMonthData = getCurrentMonthData();
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+        if (prevMonthData && prevMonthData.categories && prevMonthData.categories.length > 0) {
+            currentMonthData.categories = prevMonthData.categories.map(fund => {
+                let newFund = { ...fund };
+
+                newFund.balance = newFund.initialBalance;
+
+                if (newFund.deductionType === 'auto') { // Applies to both expense and investment if auto-deduct
+                    newFund.spent = newFund.emiAmount;
+                    newFund.balance -= newFund.emiAmount;
+                } else {
+                    if (newFund.type === 'investment') {
+                        newFund.spent = newFund.initialBalance;
+                    } else {
+                        newFund.spent = 0;
+                    }
+                }
+                return newFund;
+            });
+            currentMonthData.history = [];
+            currentMonthData.emiDeducted = false;
+            addToHistory({
+                type: 'funds_copied',
+                fromMonth: prevMonthStr,
+                description: `Funds copied from ${prevMonthStr}. Initial balances reset.`
+            });
+            showToast(`Funds copied from ${prevMonthStr}.`);
+            render();
+        } else {
+            await showAlert('No funds found in the previous month to copy.');
+        }
+    }
+
+    // Function to export data to PDF
+    async function exportToPdf() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const currentMonthData = getCurrentMonthData();
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+        const monthYear = getMonthYearString(currentMonth);
+
+        let yPos = 10;
+        const lineHeight = 7;
+        const margin = 10;
+        const pageHeight = doc.internal.pageSize.height;
+
+        // Title
+        doc.setFontSize(20);
+        doc.text(`Budget Summary for ${monthYear}`, doc.internal.pageSize.width / 2, yPos, { align: 'center' });
+        yPos += 10;
+
+        // User Info
+        doc.setFontSize(12);
+        doc.text(`User: ${userProfile.name}`, margin, yPos);
+        yPos += lineHeight;
+        doc.text(`Email: ${userProfile.email || 'N/A'}`, margin, yPos);
+        yPos += lineHeight * 2;
+
+        // Overall Summary
+        doc.setFontSize(14);
+        doc.text('Overall Summary:', margin, yPos);
+        yPos += lineHeight;
+        doc.setFontSize(12);
+        doc.text(`Monthly Income: ${currentCurrencySymbol}${currentMonthData.income.toFixed(2)}`, margin, yPos);
+        yPos += lineHeight;
+        const totalSpent = currentMonthData.categories.reduce((sum, cat) => sum + cat.spent, 0);
+        doc.text(`Total Expenses: ${currentCurrencySymbol}${totalSpent.toFixed(2)}`, margin, yPos);
+        yPos += lineHeight;
+        const totalBalance = currentMonthData.income - totalSpent;
+        doc.text(`Remaining Balance: ${currentCurrencySymbol}${totalBalance.toFixed(2)}`, margin, yPos);
+        yPos += lineHeight * 2;
+
+        // Funds Summary
+        doc.setFontSize(14);
+        doc.text('Funds Breakdown:', margin, yPos);
+        yPos += lineHeight;
+
+        currentMonthData.categories.forEach(fund => {
+            if (yPos + lineHeight * 4 > pageHeight - margin) { // Check if new page is needed
+                doc.addPage();
+                yPos = margin;
+                doc.setFontSize(14);
+                doc.text('Funds Breakdown (continued):', margin, yPos);
+                yPos += lineHeight;
+            }
+            doc.setFontSize(12);
+            doc.text(`- ${fund.name} (${fund.type.charAt(0).toUpperCase() + fund.type.slice(1)} Fund)`, margin + 5, yPos);
+            yPos += lineHeight;
+            doc.text(`  Initial: ${currentCurrencySymbol}${fund.initialBalance.toFixed(2)}`, margin + 10, yPos);
+            yPos += lineHeight;
+            doc.text(`  Current: ${currentCurrencySymbol}${fund.balance.toFixed(2)}`, margin + 10, yPos);
+            yPos += lineHeight;
+            doc.text(`  Spent: ${currentCurrencySymbol}${fund.spent.toFixed(2)}`, margin + 10, yPos);
+            yPos += lineHeight * 1.5;
+        });
+
+        // Transaction History (last 10 entries)
+        if (currentMonthData.history.length > 0) {
+            if (yPos + lineHeight * 2 > pageHeight - margin) {
+                doc.addPage();
+                yPos = margin;
+            }
+            doc.setFontSize(14);
+            doc.text('Recent Transactions (Last 10):', margin, yPos);
+            yPos += lineHeight;
+            doc.setFontSize(10);
+            currentMonthData.history.slice(0, 10).forEach(transaction => {
+                if (yPos + lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    yPos = margin;
+                    doc.setFontSize(10); // Reset font size after new page
+                }
+                doc.text(`${transaction.timestamp}: ${transaction.description}`, margin + 5, yPos);
+                yPos += lineHeight;
+            });
+        }
+
+        doc.save(`BudgetSummary_${monthYear}.pdf`);
+        showToast('PDF exported successfully!');
+    }
+
+
+    function scrollToSection(sectionId) {
+        // Get all main content sections by their IDs
+        const mainSections = [
+            'dashboard-section',
+            'history-section',
+            'analytics-section',
+            'settings-section',
+            'create-fund-section' // Include create-fund-section as a top-level section
+        ];
+
+        // Hide all main content cards
+        const allCards = document.querySelectorAll('.card');
+        allCards.forEach(card => {
+            // Only hide cards that are part of the main content flow, not modals or toasts
+            if (card.id === 'history-section' || card.id === 'analytics-section' || card.id === 'settings-section' ||
+                card.id === 'create-fund-section' ||
+                card.querySelector('#payCategory') || card.querySelector('#monthlyIncomeInput') ||
+                card.querySelector('#expenseFunds') || card.querySelector('#investmentFunds') ||
+                card.querySelector('#transferFromCategory') || card.querySelector('#currentMonthYear')) {
+                card.style.display = 'none';
+            }
+        });
+
+        // Also hide the total balance and progress bar containers
+        document.querySelector('.total-balance').style.display = 'none';
+        document.querySelector('.progress-bar-container').style.display = 'none';
+
+
+        // Show specific cards based on the selected sectionId
+        if (sectionId === 'dashboard-section') {
+            document.querySelector('.total-balance').style.display = 'block';
+            document.querySelector('.progress-bar-container').style.display = 'block';
+            document.getElementById('payCategory').closest('.card').style.display = 'block';
+            document.getElementById('monthlyIncomeInput').closest('.card').style.display = 'block';
+            document.getElementById('expenseFunds').closest('.card').style.display = 'block';
+            document.getElementById('investmentFunds').closest('.card').style.display = 'block';
+            document.getElementById('transferFromCategory').closest('.card').style.display = 'block';
+            document.getElementById('currentMonthYear').closest('.card').style.display = 'block'; // Month navigation
+        } else if (sectionId === 'history-section') {
+            document.getElementById('history-section').style.display = 'block';
+            // Ensure history content is visible if it was toggled off
+            document.getElementById('history').style.display = 'block';
+            document.getElementById('historyToggleIcon').textContent = '▲';
+        } else if (sectionId === 'analytics-section') {
+            document.getElementById('analytics-section').style.display = 'block';
+        } else if (sectionId === 'settings-section') {
+            document.getElementById('settings-section').style.display = 'block';
+            // Ensure FAQ content in settings is visible if it was toggled off
+            document.getElementById('faqContentSettings').style.display = 'block';
+            document.getElementById('faqToggleIconSettings').textContent = '▲';
+        } else if (sectionId === 'create-fund-section') {
+             document.getElementById('create-fund-section').style.display = 'block';
+        }
+
+
+        // Update active class on bottom nav buttons
+        const navButtons = document.querySelectorAll('.bottom-nav button');
+        navButtons.forEach(button => {
+            button.classList.remove('active');
+        });
+
+        // Find the button that corresponds to the sectionId and add 'active' class
+        const targetButton = document.getElementById(`nav${sectionId.replace('-section', 'Btn').replace(/(\w)(\w*)/g, (g0, g1, g2) => g1.toUpperCase() + g2)}`);
+        if (targetButton) {
+            targetButton.classList.add('active');
+        }
+    }
+
+
+    // Dark Mode functionality
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDarkMode);
+        // Sync both toggles
+        // document.getElementById('darkModeToggleSwitch').checked = isDarkMode; // Removed top toggle
+        document.getElementById('darkModeToggleSwitchSettings').checked = isDarkMode;
+        // Re-render chart to update its text color for readability
+        renderPieChart(getCurrentMonthData().categories);
+    }
+
+    // --- Currency Settings ---
+    function updateCurrency() {
+        const selectedCurrency = document.getElementById('currencySelect').value;
+        appSettings.currency = selectedCurrency;
+        saveAppSettings();
+        render(); // Re-render to update all currency displays
+        showToast(`Currency set to ${selectedCurrency}`);
+    }
+
+    // --- Default Payment App Settings ---
+    function updateDefaultPaymentApp() {
+        const selectedApp = document.getElementById('defaultPaymentAppSelect').value;
+        appSettings.defaultPaymentApp = selectedApp;
+        saveAppSettings();
+        render(); // Re-render to update the button text
+        showToast(`Default payment app set to ${selectedApp}`);
+    }
+
+    // --- User Profile Functions ---
+    function renderUserProfile() {
+        document.getElementById('welcomeMessage').textContent = `Welcome, ${userProfile.name}!`;
+        document.getElementById('welcomeAvatar').textContent = userProfile.avatar; // Update avatar in welcome message
+        document.getElementById('userNameInput').value = userProfile.name;
+        document.getElementById('userEmailInput').value = userProfile.email;
+        document.getElementById('profileAvatarDisplay').textContent = userProfile.avatar;
+        document.getElementById('profileNameDisplay').textContent = userProfile.name;
+        document.getElementById('profileEmailDisplay').textContent = userProfile.email;
+
+        // Highlight selected avatar
+        document.querySelectorAll('.avatar-option').forEach(option => {
+            if (option.dataset.emoji === userProfile.avatar) {
+                option.classList.add('selected');
+            } else {
+                option.classList.remove('selected');
+            }
+        });
+    }
+
+    function updateUserProfile() {
+        userProfile.name = document.getElementById('userNameInput').value.trim();
+        userProfile.email = document.getElementById('userEmailInput').value.trim();
+        saveUserProfile(); // This also calls renderUserProfile()
+    }
+
+    function selectAvatar(emoji) {
+        userProfile.avatar = emoji;
+        saveUserProfile(); // This also calls renderUserProfile()
+        showToast(`Avatar updated to ${emoji}`);
+    }
+
+
+    // --- Chatbot Functionality ---
+    const chatbotFab = document.getElementById('chatbotFab');
+    const chatContainer = document.getElementById('chatContainer');
+    const closeChatBtn = document.getElementById('closeChatBtn');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const micBtn = document.getElementById('micBtn');
+    const ttsToggle = document.getElementById('ttsToggle');
+
+    let recognition;
+    let synth;
+    let isListening = false;
+    let isSpeakingEnabled = false;
+    let sentiment;
+
+    async function loadSentimentModel() {
+        console.log("Loading sentiment analysis model...");
+        try {
+            sentiment = await ml5.sentiment('movieReviews', () => {
+                console.log("Sentiment analysis model loaded.");
+                showToast("Sentiment model loaded!");
+            });
+        } catch (error) {
+            console.error("Failed to load sentiment model:", error);
+            showToast("Sentiment model failed to load.");
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize settings and user profile
+        document.getElementById('currencySelect').value = appSettings.currency;
+        document.getElementById('defaultPaymentAppSelect').value = appSettings.defaultPaymentApp;
+        renderUserProfile(); // Render initial profile
+
+        // Sync dark mode toggle on settings page
+        const settingsDarkModeToggle = document.getElementById('darkModeToggleSwitchSettings');
+
+        const savedDarkMode = localStorage.getItem('darkMode');
+        if (savedDarkMode === 'true') {
+            document.body.classList.add('dark-mode');
+            settingsDarkModeToggle.checked = true;
+        } else {
+            settingsDarkModeToggle.checked = false;
+        }
+
+        // Add event listener for settings dark mode toggle
+        settingsDarkModeToggle.addEventListener('change', toggleDarkMode);
+
+        // Add event listeners for avatar options
+        document.getElementById('avatarOptions').addEventListener('click', (event) => {
+            if (event.target.classList.contains('avatar-option')) {
+                selectAvatar(event.target.dataset.emoji);
+            }
+        });
+
+        // Populate FAQ content in settings once on load
+        // Get the container of faq-items (the div with id="faqContent")
+        const mainFaqContent = document.getElementById('faqContent');
+        const settingsFaqContent = document.getElementById('faqContentSettings');
+        if (mainFaqContent && settingsFaqContent) {
+            settingsFaqContent.innerHTML = mainFaqContent.innerHTML;
+        }
+
+
+        isSpeakingEnabled = ttsToggle.checked;
+        loadSentimentModel();
+
+        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('listening');
+                chatInput.placeholder = 'Listening...';
+                chatInput.disabled = true;
+                sendChatBtn.disabled = true;
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                chatInput.value = transcript;
+                sendChatMessage();
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    showToast('No speech detected. Please try again.');
+                } else if (event.error === 'not-allowed') {
+                    showAlert('Microphone access denied. Please enable it in your browser settings.');
+                } else {
+                    showToast('Speech recognition error. Please type your message.');
+                }
+                isListening = false;
+                micBtn.classList.remove('listening');
+                chatInput.placeholder = 'Type a message...';
+                chatInput.disabled = false;
+                sendChatBtn.disabled = false;
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('listening');
+                chatInput.placeholder = 'Type a message...';
+                chatInput.disabled = false;
+                sendChatBtn.disabled = false;
+            };
+
+            micBtn.addEventListener('click', () => {
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    if (synth && synth.speaking) {
+                        synth.cancel();
+                    }
+                    recognition.start();
+                }
+            });
+
+        } else {
+            micBtn.style.display = 'none';
+            console.warn('Web Speech API (SpeechRecognition) not supported in this browser.');
+            showToast('Speech input is not supported in your browser.');
+        }
+
+        if ('speechSynthesis' in window) {
+            synth = window.speechSynthesis;
+            ttsToggle.addEventListener('change', () => {
+                isSpeakingEnabled = ttsToggle.checked;
+                if (!isSpeakingEnabled) {
+                    synth.cancel();
+                }
+            });
+        } else {
+            ttsToggle.closest('.chat-options').style.display = 'none';
+            console.warn('Web Speech API (SpeechSynthesis) not supported in this browser.');
+            showToast('Text-to-speech is not supported in your browser.');
+        }
+
+        chatbotFab.addEventListener('click', () => {
+            chatContainer.classList.toggle('open');
+            if (chatContainer.classList.contains('open')) {
+                chatInput.focus();
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+
+        closeChatBtn.addEventListener('click', () => {
+            chatContainer.classList.remove('open');
+            if (isListening) {
+                recognition.stop();
+            }
+            if (synth && synth.speaking) {
+                synth.cancel();
+            }
+        });
+
+        sendChatBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+
+        toggleAutoDeduct(); // Initial call to set correct state of auto-deduct checkbox
+        render();
+        // Initial display of dashboard and welcome message
+        scrollToSection('dashboard-section');
+        document.getElementById('welcomeMessage').textContent = `Welcome, ${userProfile.name}!`;
+
+        // Hide other main sections initially (handled by scrollToSection now)
+        // document.getElementById('history-section').style.display = 'none';
+        // document.getElementById('analytics-section').style.display = 'none';
+        // document.getElementById('settings-section').style.display = 'none';
+    });
+
+    function appendMessageToChat(sender, message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-message', sender === 'User' ? 'user' : 'bot');
+        const span = document.createElement('span');
+        span.textContent = message;
+        messageDiv.appendChild(span);
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (sender === 'Bot' && isSpeakingEnabled) {
+            speakText(message);
+        }
+    }
+
+    function speakText(text) {
+        if (synth && isSpeakingEnabled) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            synth.speak(utterance);
+        }
+    }
+
+    function getBotResponse(userMessage) {
+        const lowerMessage = userMessage.toLowerCase();
+        const currentMonthData = getCurrentMonthData();
+        const totalBalance = parseFloat(document.getElementById('totalBalance').textContent); // Use parsed float
+        const monthlyIncome = currentMonthData.income;
+        const totalExpenses = currentMonthData.categories.reduce((sum, cat) => sum + cat.spent, 0);
+        const currentCurrencySymbol = currencySymbols[appSettings.currency];
+
+
+        if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+            return `Hi there, ${userProfile.name}! I'm your Budget Bot. How can I assist you with your finances today?;`;
+        } else if (lowerMessage.includes('balance')) {
+            return `Your current total remaining balance is ${currentCurrencySymbol}${totalBalance.toFixed(2)}.`;
+        } else if (lowerMessage.includes('income')) {
+             if (monthlyIncome > 0) {
+                return `Your set monthly income is ${currentCurrencySymbol}${monthlyIncome.toFixed(2)}.`;
+            } else {
+                return "You haven't set your monthly income yet. You can do so in the 'Monthly Income & Expenses' section.";
+            }
+        } else if (lowerMessage.includes('expenses') || lowerMessage.includes('total expenses')) {
+            return `Your total expenses logged so far this month are ${currentCurrencySymbol}${totalExpenses.toFixed(2)}.`;
+        } else if (lowerMessage.includes('add fund') || lowerMessage.includes('create fund')) {
+            return "To add a new fund, scroll down or click the '+' button at the bottom right to go to the 'Create New Fund' section.";
+        } else if (lowerMessage.includes('history')) {
+            return "You can view your transaction history by scrolling down to the 'Transaction History' section or clicking 'History' in the bottom navigation.";
+        } else if (lowerMessage.includes('transfer')) {
+            return "You can transfer funds between categories in the 'Fund Transfer' section.";
+        } else if (lowerMessage.includes('reset data')) {
+            return "You can reset all data for the current month using the 'Reset All Data' button at the very bottom of the page. Be careful, this action is irreversible!";
+        } else if (lowerMessage.includes('dark mode') || lowerMessage.includes('light mode')) {
+            return "You can toggle between light and dark mode using the switch at the very top of the page, or in the Settings section.";
+        } else if (lowerMessage.includes('thank you') || lowerMessage.includes('thanks')) {
+            return "You're most welcome! I'm here to help with your budgeting. Feel free to ask more questions.";
+        } else if (lowerMessage.includes('emi') || lowerMessage.includes('auto-deduct')) {
+            const autoDeductFunds = currentMonthData.categories.filter(cat => cat.deductionType === 'auto');
+            if (autoDeductFunds.length > 0) {
+                const autoDeductList = autoDeductFunds.map(fund => `${fund.name} (${currentCurrencySymbol}${fund.emiAmount.toFixed(2)})`).join(', ');
+                return `You have the following auto-deduct funds: ${autoDeductList}. These are automatically deducted at the start of each month.`;
+            } else {
+                return "You don't have any auto-deductible funds set up. You can create one in the 'Create New Fund' section and check 'Auto-Deduct'.";
+            }
+        } else if (lowerMessage.includes('investment')) {
+            const investmentFunds = currentMonthData.categories.filter(cat => cat.type === 'investment');
+            if (investmentFunds.length > 0) {
+                const invList = investmentFunds.map(fund => {
+                    if (fund.deductionType === 'auto') {
+                        return `${fund.name} (Auto-Invested: ${currentCurrencySymbol}${fund.emiAmount.toFixed(2)}, Remaining: ${currentCurrencySymbol}${fund.balance.toFixed(2)})`;
+                    } else {
+                        return `${fund.name} (Manual Investment: ${currentCurrencySymbol}${fund.spent.toFixed(2)}, Remaining: ${currentCurrencySymbol}${fund.balance.toFixed(2)})`;
+                    }
+                }).join(', ');
+                return `Your investment funds are: ${invList}.`;
+            } else {
+                return "You don't have any investment funds currently. You can create new ones in the 'Create New Fund' section.";
+            }
+        } else if (lowerMessage.includes('settings') || lowerMessage.includes('profile') || lowerMessage.includes('currency') || lowerMessage.includes('payment app')) {
+            return "You can adjust various settings like currency, default payment app, and your user profile in the 'Settings' section, accessible from the bottom navigation.";
+        }
+        else {
+            return "I'm a simple Budget Bot. I can answer questions about your **balance**, **income**, **expenses**, how to **add funds**, **transfer funds**, or **history**. Try asking me about 'EMI' or 'investment' funds too!";
+        }
+    }
+
+    async function sendChatMessage() {
+        const userMessage = chatInput.value.trim();
+        if (!userMessage) return;
+
+        if (isListening) {
+            recognition.stop();
+        }
+
+        appendMessageToChat('User', userMessage);
+        chatInput.value = '';
+        chatInput.placeholder = 'Thinking...';
+        chatInput.disabled = true;
+        sendChatBtn.disabled = true;
+        micBtn.disabled = true;
+
+        let sentimentResponse = '';
+        if (sentiment) {
+            try {
+                const prediction = await sentiment.predict(userMessage);
+                const sentimentScore = prediction.score;
+
+                if (sentimentScore > 0.6) {
+                    sentimentResponse = "That sounds positive! ";
+                } else if (sentimentScore < 0.4) {
+                    sentimentResponse = "I sense some negativity. Is there anything specific troubling you? ";
+                } else {
+                    sentimentResponse = "Okay, I understand. ";
+                }
+            } catch (error) {
+                console.error("Sentiment analysis failed:", error);
+                sentimentResponse = "I couldn't analyze the sentiment of that message. ";
+            }
+        } else {
+            sentimentResponse = "Sentiment analysis model is still loading or failed to load. ";
+        }
+
+        const botResponse = getBotResponse(userMessage);
+        appendMessageToChat('Bot', sentimentResponse + botResponse);
+
+
+        chatInput.placeholder = 'Type a message...';
+        chatInput.disabled = false;
+        sendChatBtn.disabled = false;
+        micBtn.disabled = false;
+    }
+    // --- End Chatbot Functionality ---
+  </script>
+</body>
+</html>
+ 
